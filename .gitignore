@@ -1,0 +1,7 @@
+# Keep personal learning notes out of commits by default
+/devpost/learner-profile.md
+
+# Local environment files
+.env
+.env.*
+!.env.example
