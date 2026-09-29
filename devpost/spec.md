@@ -172,7 +172,7 @@ This structure is deliberate: parsing, graph construction, AI summary generation
 ## External Services and Dependencies
 - Gemini API — used to generate the selected node’s architectural summary
   - App endpoint: `POST /api/summarize` accepts the node name, path, category, and up to 12,000 source characters; it returns `{ "summary": "..." }`
-  - SDK call: `@google/genai` `models.generateContent` using `gemini-3.8-flash`
+  - SDK call: `@google/genai` `models.generateContent` using `gemini-3.8-flash`, low thinking level, and a 512-token output ceiling; incomplete summaries are rejected so the UI uses its local fallback
   - Auth: `GEMINI_API_KEY` stays server-side and is never sent to the browser
   - Failure behavior: missing key returns 503; API errors return 502; the inspector falls back to a local metadata summary
   - Cost and quota depend on the current Google AI Studio project limits; check current pricing and quotas before public use

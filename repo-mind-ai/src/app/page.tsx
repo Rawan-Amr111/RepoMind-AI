@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Download } from "lucide-react";
 import GraphCanvas from "@/components/GraphCanvas";
 import NodeInspector from "@/components/NodeInspector";
 import { buildArchitectureGraph, type ArchitectureGraph } from "@/lib/architecture";
@@ -26,6 +26,7 @@ export default function Home() {
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [statusText, setStatusText] = useState("Waiting for project upload");
+  const [errorMessage, setErrorMessage] = useState("");
   const [projectName, setProjectName] = useState("No project loaded");
   const [progress, setProgress] = useState(0);
   const [graph, setGraph] = useState<ArchitectureGraph>({ nodes: [], edges: [] });
@@ -37,11 +38,12 @@ export default function Home() {
     api: true,
     utility: true,
   });
-  const [exportState, setExportState] = useState<"idle" | "copied" | "error">("idle");
+  const [exportState, setExportState] = useState<"idle" | "copied" | "downloaded">("idle");
 
   const startParsing = async (label: string, files: File[]) => {
     setIsParsing(true);
     setStatusText("Parsing JS/TS imports via JSZip...");
+    setErrorMessage("");
     setProjectName(label);
     setProgress(10);
     setGraph({ nodes: [], edges: [] });
@@ -60,9 +62,9 @@ export default function Home() {
       await new Promise((resolve) => setTimeout(resolve, 350));
       setStatusText("Project parsed successfully");
     } catch (error) {
-      setStatusText(
-        error instanceof Error ? error.message : "The project could not be parsed.",
-      );
+      const message = error instanceof Error ? error.message : "The project could not be parsed.";
+      setStatusText(message);
+      setErrorMessage(message);
     } finally {
       if (timer) clearInterval(timer);
       setIsParsing(false);
@@ -120,22 +122,22 @@ export default function Home() {
       link.href = url;
       link.download = "repomind-architecture.md";
       link.click();
-      URL.revokeObjectURL(url);
-      setExportState("error");
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportState("downloaded");
     }
     window.setTimeout(() => setExportState("idle"), 2400);
   };
 
   return (
     <div className="min-h-screen bg-[#050b14] text-slate-100">
-      <div className="mx-auto flex h-screen max-w-[1800px] flex-col">
-        <header className="flex items-center justify-between border-b border-white/10 bg-slate-950/80 px-6 py-4 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
+      <div className="mx-auto flex min-h-screen max-w-[1800px] flex-col lg:h-screen">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/80 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-sm font-bold text-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.25)]">
               RM
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-lg font-semibold tracking-tight text-white">
+              <span className="text-base font-semibold tracking-tight text-white sm:text-lg">
                 RepoMind AI
               </span>
               <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
@@ -144,7 +146,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200">
               Nodes: {graph.nodes.length} | Edges: {graph.edges.length}
             </div>
@@ -154,14 +156,14 @@ export default function Home() {
               onClick={handleMermaidExport}
               className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.15)] transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {exportState === "copied" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
-              {exportState === "copied" ? "Mermaid copied" : "Export to Mermaid"}
+              {exportState === "copied" ? <Check size={15} aria-hidden="true" /> : exportState === "downloaded" ? <Download size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+              {exportState === "copied" ? "Mermaid copied" : exportState === "downloaded" ? "Markdown downloaded" : "Export to Mermaid"}
             </button>
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden border-t border-white/10">
-          <aside className="w-[330px] border-r border-white/10 bg-[#0a1220] p-5">
+        <div className="flex min-h-0 flex-1 overflow-hidden border-t border-white/10 max-lg:flex-col max-lg:overflow-y-auto">
+          <aside className="w-full shrink-0 border-b border-white/10 bg-[#0a1220] p-4 sm:p-5 lg:w-[330px] lg:border-b-0 lg:border-r">
             <div
               onDrop={handleDrop}
               onDragOver={(event) => event.preventDefault()}
@@ -271,12 +273,13 @@ export default function Home() {
               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Project</div>
               <div className="mt-2 font-medium text-slate-100">{projectName}</div>
               <div className="mt-1 text-slate-400">{statusText}</div>
+              {errorMessage && <p role="alert" className="mt-2 text-xs text-rose-300">{errorMessage}</p>}
             </div>
           </aside>
 
-          <main className="relative flex-1 overflow-hidden bg-[#070d18]">
+          <main className="relative min-h-[420px] min-w-0 flex-1 overflow-hidden bg-[#070d18] lg:min-h-0">
             <div className="app-grid absolute inset-0 opacity-80" />
-            {graph.nodes.length > 0 ? (
+            {graph.nodes.length > 0 && visibleNodes.length > 0 ? (
               <GraphCanvas
                 nodes={visibleNodes}
                 edges={visibleEdges}
@@ -284,6 +287,10 @@ export default function Home() {
                 layoutMode={layoutMode}
                 onNodeSelect={setSelectedNodeId}
               />
+            ) : graph.nodes.length > 0 ? (
+              <div className="relative z-10 flex h-full min-h-[420px] items-center justify-center p-6 text-center">
+                <p className="max-w-sm text-sm text-slate-400">All architecture layers are hidden. Turn on a layer in the workspace panel to show nodes.</p>
+              </div>
             ) : (
               <div className="relative z-10 flex h-full items-center justify-center p-8">
                 <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/70 p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.7)] backdrop-blur-sm">
@@ -309,7 +316,7 @@ export default function Home() {
             )}
           </main>
 
-          <aside className={`w-[360px] shrink-0 border-l border-white/10 bg-[#0a1220] p-5 transition-[width] duration-300 ${selectedNode ? "translate-x-0" : ""}`}>
+          <aside className={`w-full shrink-0 border-t border-white/10 bg-[#0a1220] p-4 transition-[width] duration-300 sm:p-5 lg:w-[360px] lg:border-l lg:border-t-0 ${selectedNode ? "translate-x-0" : ""}`}>
             <NodeInspector
               node={selectedNode}
               nodes={graph.nodes}

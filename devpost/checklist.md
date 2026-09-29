@@ -39,7 +39,7 @@ Build mode: learn
   Learner check: Upload a project and confirm the graph appears as a clear architecture map rather than a blank canvas.
   Commit: `Render interactive architecture graph`
 
-- [ ] **4. Graph filtering, node inspection, and Mermaid export**
+- [x] **4. Graph filtering, node inspection, and Mermaid export**
   Becomes usable: The user can filter the graph, inspect a selected node with an AI summary, and copy a Mermaid diagram of the architecture.
   Why now: Combining inspection and export completes the understanding-and-documentation journey in one integrated slice, as requested by the learner.
   PRD ref: `prd.md > Features and Behavior > Layer Filtering and Layout Controls`, `prd.md > Features and Behavior > Node Inspection`
@@ -84,3 +84,4 @@ Activity mode: [live app and editor, explicit static fallback, focused alternati
 
 - Moved Mermaid export from Slice 5 into Slice 4 — the learner requested graph inspection and README export together as the next integrated capability, so the remaining final slice is focused on demo polish and failure handling.
 - Gemini summaries use a Next.js server route rather than a browser-side key — Google’s current key guidance says client-side keys are extractable; without a configured key, inspection remains available with a local summary.
+- A live response was truncated at the original 180-token ceiling because Gemini counts internal thinking in that budget — use low thinking and a 512-token ceiling, and reject incomplete summaries so the inspector falls back cleanly.

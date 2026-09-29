@@ -109,8 +109,6 @@ The app should feel fast and informative without becoming visually noisy. A sele
 - Full production-grade repository auditing for enterprise teams
 
 ## Open Questions
-- Should the built-in demo repo be a lightweight example app included with the project, or a fetched public sample repository?
-- Should the app support drag-and-drop uploads only, or also direct folder selection via file picker?
-- Must the Mermaid export be copy-to-clipboard only, or should it also offer a downloadable .md file?
-
-These can be answered before spec if they materially affect the build, but they do not block a strong proof-of-concept draft.
+- The demo repo is a lightweight in-app sample so the experience works without a network fetch.
+- The app supports ZIP/files by drag-and-drop and direct folder selection.
+- Mermaid export copies to the clipboard and downloads a Markdown file if clipboard access is unavailable.

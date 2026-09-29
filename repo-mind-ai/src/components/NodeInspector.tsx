@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import type { ArchitectureNodeData } from "@/lib/architecture";
 
+const categoryLabels = {
+  ui: "UI Component",
+  state: "Hooks & State",
+  api: "API Route",
+  utility: "Utility",
+} as const;
+
 type NodeInspectorProps = {
   node: Node<ArchitectureNodeData> | null;
   nodes: Node<ArchitectureNodeData>[];
@@ -91,7 +98,7 @@ export default function NodeInspector({ node, nodes, edges, onClose }: NodeInspe
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: node.data.color }}>
-            {node.data.category === "state" ? "Hooks & State" : node.data.category}
+            {categoryLabels[node.data.category]}
           </span>
           <h2 className="mt-1 truncate text-lg font-semibold text-white">{node.data.label}</h2>
           <p className="mt-1 break-all font-mono text-[10px] text-slate-400">{node.data.filePath}</p>
