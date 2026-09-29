@@ -9,7 +9,7 @@ Build mode: learn
 
 ## Slices
 
-- [ ] **1. App shell and empty-state dashboard**
+- [x] **1. App shell and empty-state dashboard**
   Becomes usable: The app opens as a polished dark-mode workspace with header, left panel, empty graph canvas, and empty inspector state.
   Why now: This establishes the project shell and the viewer experience first, so the upload and graph flow has a clear place to land.
   PRD ref: `prd.md > Screens and Layout`, `prd.md > Features and Behavior > Upload, Setup, and Demo Experience`
@@ -19,7 +19,7 @@ Build mode: learn
   Learner check: Open the app and confirm the landing screen looks like a dark-mode developer workspace with the upload prompt and empty canvas.
   Commit: `Create dashboard shell and empty state`
 
-- [ ] **2. Upload, demo load, and parsing state**
+- [x] **2. Upload, demo load, and parsing state**
   Becomes usable: The user can upload a ZIP or folder and see a parsing/loading state, or click a demo button to simulate the project-loading flow.
   Why now: The app needs a real input path before the graph can be generated, and this slice proves the upload workflow is working.
   PRD ref: `prd.md > Features and Behavior > Upload, Setup, and Demo Experience`
@@ -29,7 +29,7 @@ Build mode: learn
   Learner check: Try the upload flow or demo button and confirm the app clearly communicates loading progress and loading completion.
   Commit: `Add upload flow and parser loading state`
 
-- [ ] **3. Graph render and node/edge generation**
+- [x] **3. Graph render and node/edge generation**
   Becomes usable: A visible architecture graph appears based on parsed project files, with color-coded nodes and edges.
   Why now: This is the unique kernel of the product and should appear early enough to be the wow moment of the demo.
   PRD ref: `prd.md > The Core Journey`, `prd.md > Features and Behavior > Architecture Visualization`
@@ -39,29 +39,29 @@ Build mode: learn
   Learner check: Upload a project and confirm the graph appears as a clear architecture map rather than a blank canvas.
   Commit: `Render interactive architecture graph`
 
-- [ ] **4. Graph filtering and node inspection**
-  Becomes usable: The user can toggle layers and select a node to open the inspector drawer with metadata and a summary.
-  Why now: This gives the user the main analytical value of the app and closes the core loop around understanding a project.
+- [ ] **4. Graph filtering, node inspection, and Mermaid export**
+  Becomes usable: The user can filter the graph, inspect a selected node with an AI summary, and copy a Mermaid diagram of the architecture.
+  Why now: Combining inspection and export completes the understanding-and-documentation journey in one integrated slice, as requested by the learner.
   PRD ref: `prd.md > Features and Behavior > Layer Filtering and Layout Controls`, `prd.md > Features and Behavior > Node Inspection`
-  Spec ref: `spec.md > Components > Semantic Layer Filters`, `spec.md > Components > Node Inspector`
-  Build: Add semantic layer toggles, graph layout switching, selected-node highlight logic, inspector panel content, and a short AI summary fallback path.
-  Verify (mechanical): Select a node, confirm the inspector panel opens and the related node highlight and edge emphasis behave as intended.
-  Learner check: Click a node and verify the selected item focuses and the inspector shows useful architecture information.
-  Commit: `Add filtering and node inspector`
+  Spec ref: `spec.md > Components > Semantic Layer Filters`, `spec.md > Components > Node Inspector`, `spec.md > Components > Mermaid Export Module`
+  Build: Add semantic layer toggles, layout switching, selected-node focus, inspector metadata/code/summary, Gemini-backed summary with a safe fallback, and Mermaid generation with copy action.
+  Verify (mechanical): Filter the graph, select a node and check inspector content, then generate a Mermaid diagram and verify it includes the graph's nodes and edges.
+  Learner check: Try filtering, inspect a node, and copy the architecture diagram; confirm each result is clear and useful.
+  Commit: `Add graph inspection and Mermaid export`
 
-- [ ] **5. Mermaid export and final polish**
-  Becomes usable: The export button works on a loaded graph and copies Mermaid code for GitHub README use.
-  Why now: It completes the primary documentation workflow and makes the app demo-ready for a judges’ or user’s final review.
-  PRD ref: `prd.md > Features and Behavior > Export to Mermaid`
-  Spec ref: `spec.md > Components > Mermaid Export Module`, `spec.md > Important Failure Modes`
-  Build: Generate Mermaid graph text from the current graph model, connect the export action to clipboard flow, and polish edge cases such as empty states and failed summaries.
-  Verify (mechanical): Load a graph and confirm the Mermaid output is valid and visible in the UI, then copy it and confirm it is usable as Markdown.
-  Learner check: Export the graph and confirm the output is valid and ready to paste into documentation.
-  Commit: `Ship Mermaid export and polish demo flow`
+- [ ] **5. Final demo polish and failure states**
+  Becomes usable: Upload, parsing, and AI failures are explained clearly, and the full demo remains legible at the target screen size.
+  Why now: Once all core behaviors are integrated, this final slice resolves the few failure cases that could derail a live demo.
+  PRD ref: `prd.md > States and Boundaries`, `prd.md > What We're Building`
+  Spec ref: `spec.md > Important Failure Modes`, `spec.md > Look and Feel`
+  Build: Refine empty/error/loading messages, handle unavailable Gemini credentials or service failures gracefully, and correct any visual overflow found during the integrated review.
+  Verify (mechanical): Run lint and production build; confirm invalid input and AI failure leave the graph usable and show a clear message.
+  Learner check: Try an invalid project and review the complete demo at desktop and narrow viewport widths.
+  Commit: `Polish demo states and layout`
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after slice 2 or slice 3, depending on user feedback
+- [x] Early usable behavior explored — after slice 2 or slice 3, depending on user feedback
 - [ ] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
@@ -81,3 +81,6 @@ Reflection: [offered/answered/declined/already covered — personal answer belon
 Activity mode: [live app and editor, explicit static fallback, focused alternative, prior practice, or recap]
 
 ## Revisions
+
+- Moved Mermaid export from Slice 5 into Slice 4 — the learner requested graph inspection and README export together as the next integrated capability, so the remaining final slice is focused on demo polish and failure handling.
+- Gemini summaries use a Next.js server route rather than a browser-side key — Google’s current key guidance says client-side keys are extractable; without a configured key, inspection remains available with a local summary.

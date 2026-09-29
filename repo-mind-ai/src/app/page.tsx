@@ -1,18 +1,25 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import GraphCanvas from "@/components/GraphCanvas";
+import NodeInspector from "@/components/NodeInspector";
 import { buildArchitectureGraph, type ArchitectureGraph } from "@/lib/architecture";
+import { generateMermaid } from "@/lib/generateMermaid";
+import { type LayoutMode } from "@/lib/layoutGraph";
 import { parseProjectFiles } from "@/lib/parseProject";
 
 const layerOptions = [
-  "UI Components",
-  "State Stores & Hooks",
-  "API Routes",
-  "Lib & Utilities",
+  { label: "UI Components", category: "ui" },
+  { label: "State Stores & Hooks", category: "state" },
+  { label: "API Routes", category: "api" },
+  { label: "Lib & Utilities", category: "utility" },
+] as const;
+const layoutOptions: { label: string; mode: LayoutMode }[] = [
+  { label: "Force", mode: "force" },
+  { label: "DAG", mode: "dag" },
+  { label: "Radial", mode: "radial" },
 ];
-
-const layoutOptions = ["Force", "DAG", "Radial"];
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -22,6 +29,15 @@ export default function Home() {
   const [projectName, setProjectName] = useState("No project loaded");
   const [progress, setProgress] = useState(0);
   const [graph, setGraph] = useState<ArchitectureGraph>({ nodes: [], edges: [] });
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("force");
+  const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({
+    ui: true,
+    state: true,
+    api: true,
+    utility: true,
+  });
+  const [exportState, setExportState] = useState<"idle" | "copied" | "error">("idle");
 
   const startParsing = async (label: string, files: File[]) => {
     setIsParsing(true);
@@ -38,6 +54,7 @@ export default function Home() {
       const sourceFiles = await parseProjectFiles(files);
       const parsedGraph = buildArchitectureGraph(sourceFiles);
       setGraph(parsedGraph);
+      setSelectedNodeId(null);
 
       setProgress(100);
       await new Promise((resolve) => setTimeout(resolve, 350));
@@ -86,6 +103,29 @@ export default function Home() {
     await startParsing("Demo Repo", demoFiles);
   };
 
+  const visibleNodes = graph.nodes.filter((node) => visibleLayers[node.data.category] !== false);
+  const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+  const visibleEdges = graph.edges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId) ?? null;
+
+  const handleMermaidExport = async () => {
+    const markdown = generateMermaid(visibleNodes, visibleEdges);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setExportState("copied");
+    } catch {
+      const blob = new Blob([markdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "repomind-architecture.md";
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportState("error");
+    }
+    window.setTimeout(() => setExportState("idle"), 2400);
+  };
+
   return (
     <div className="min-h-screen bg-[#050b14] text-slate-100">
       <div className="mx-auto flex h-screen max-w-[1800px] flex-col">
@@ -110,10 +150,12 @@ export default function Home() {
             </div>
             <button
               type="button"
-              disabled
-              className="rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 opacity-50 shadow-[0_0_18px_rgba(34,211,238,0.15)] transition disabled:cursor-not-allowed"
+              disabled={!graph.nodes.length}
+              onClick={handleMermaidExport}
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.15)] transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Export to Mermaid
+              {exportState === "copied" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+              {exportState === "copied" ? "Mermaid copied" : "Export to Mermaid"}
             </button>
           </div>
         </header>
@@ -187,13 +229,17 @@ export default function Home() {
                 <div className="space-y-2">
                   {layerOptions.map((item) => (
                     <label
-                      key={item}
+                      key={item.category}
                       className="flex cursor-pointer items-center justify-between rounded-xl border border-white/5 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/30 hover:bg-slate-800/80"
                     >
-                      <span>{item}</span>
+                      <span>{item.label}</span>
                       <input
                         type="checkbox"
-                        defaultChecked
+                        checked={visibleLayers[item.category] !== false}
+                        onChange={(event) => {
+                          setVisibleLayers((current) => ({ ...current, [item.category]: event.target.checked }));
+                          setSelectedNodeId(null);
+                        }}
                         className="h-4 w-4 accent-cyan-400"
                       />
                     </label>
@@ -208,11 +254,13 @@ export default function Home() {
                 <div className="flex flex-wrap gap-2">
                   {layoutOptions.map((option) => (
                     <button
-                      key={option}
+                      key={option.mode}
                       type="button"
-                      className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
+                      onClick={() => setLayoutMode(option.mode)}
+                      aria-pressed={layoutMode === option.mode}
+                      className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${layoutMode === option.mode ? "border-cyan-400/60 bg-cyan-500/10 text-cyan-100" : "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200"}`}
                     >
-                      {option}
+                      {option.label}
                     </button>
                   ))}
                 </div>
@@ -229,7 +277,13 @@ export default function Home() {
           <main className="relative flex-1 overflow-hidden bg-[#070d18]">
             <div className="app-grid absolute inset-0 opacity-80" />
             {graph.nodes.length > 0 ? (
-              <GraphCanvas nodes={graph.nodes} edges={graph.edges} />
+              <GraphCanvas
+                nodes={visibleNodes}
+                edges={visibleEdges}
+                selectedNodeId={selectedNodeId}
+                layoutMode={layoutMode}
+                onNodeSelect={setSelectedNodeId}
+              />
             ) : (
               <div className="relative z-10 flex h-full items-center justify-center p-8">
                 <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/70 p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.7)] backdrop-blur-sm">
@@ -255,10 +309,13 @@ export default function Home() {
             )}
           </main>
 
-          <aside className="w-[330px] border-l border-white/10 bg-[#0a1220] p-5">
-            <div className="flex h-full items-start justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-center text-sm text-slate-400">
-              Click any node on the canvas to inspect component architecture, props, and AI summary.
-            </div>
+          <aside className={`w-[360px] shrink-0 border-l border-white/10 bg-[#0a1220] p-5 transition-[width] duration-300 ${selectedNode ? "translate-x-0" : ""}`}>
+            <NodeInspector
+              node={selectedNode}
+              nodes={graph.nodes}
+              edges={graph.edges}
+              onClose={() => setSelectedNodeId(null)}
+            />
           </aside>
         </div>
       </div>

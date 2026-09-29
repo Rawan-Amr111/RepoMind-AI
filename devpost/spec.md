@@ -34,7 +34,8 @@ PRD ref: `prd.md > The Core Journey`.
 - React Flow — interactive graph rendering, node interactions, and edge drawing
 - JSZip — client-side ZIP parsing and file extraction
 - Google Gemini Flash API — short, AI-powered architectural summaries for selected nodes
-- Optional lightweight utility library for file parsing and sanitization if it reduces complexity
+- D3 Force — deterministic positions for force-directed graph layout
+- Lucide React — interface icons for export feedback
 
 Why this stack fits the project:
 - It keeps the app fast to build and easy to demo locally.
@@ -48,7 +49,7 @@ Runtime: browser-based app, meant to run locally for the demo. Deployment is opt
 Environment requirements:
 - Node.js 18+ or the project’s active LTS version
 - A browser with local filesystem access for folder upload or ZIP import
-- Gemini API key for the AI summary feature (or a proxy route if the app chooses not to call the API directly from the browser)
+- Optional `GEMINI_API_KEY` in `repo-mind-ai/.env.local`; only the server route reads this value
 
 Startup flow:
 1. Install dependencies: `npm install`
@@ -56,6 +57,8 @@ Startup flow:
 3. Open the local app in the browser at the local Next.js URL
 4. Upload a project ZIP or click “Load Demo Repo”
 5. Record the demo as a short walkthrough of upload → graph render → node inspection → Mermaid export
+
+Without a Gemini key, the inspector displays a local summary derived from selected-file metadata. Copy the placeholder from `.env.example` to `.env.local` and set a valid key to enable Gemini summaries.
 
 Submission requirement: this app can be demonstrated locally with a short video and a public GitHub repo. Deployment is optional and can be added later if a public link is valuable.
 
@@ -142,58 +145,38 @@ This model is enough to support filtering, highlighting, node inspection, and Me
 
 ## File Structure
 ```text
-project/
-├── app/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── dashboard/
-│   │   ├── HeaderBar.tsx
-│   │   ├── WorkspacePanel.tsx
+repo-mind-ai/
+├── src/
+│   ├── app/
+│   │   ├── api/summarize/route.ts  # Server-only Gemini proxy
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/
 │   │   ├── GraphCanvas.tsx
 │   │   └── NodeInspector.tsx
-│   ├── graph/
-│   │   ├── GraphNode.tsx
-│   │   ├── GraphEdge.tsx
-│   │   └── MermaidExportButton.tsx
-│   └── ui/
-│       └── Toggle.tsx
-├── lib/
-│   ├── parser/
-│   │   ├── parseProject.ts
-│   │   ├── extractImports.ts
-│   │   └── classifyNode.ts
-│   ├── graph/
-│   │   ├── buildGraph.ts
-│   │   └── layout.ts
-│   ├── ai/
-│   │   └── summarizeNode.ts
-│   └── export/
-│       └── generateMermaid.ts
+│   └── lib/
+│       ├── architecture.ts
+│       ├── generateMermaid.ts
+│       ├── layoutGraph.ts
+│       └── parseProject.ts
 ├── public/
-│   └── demo/
-├── devpost/
-│   ├── learner-profile.md
-│   ├── scope.md
-│   ├── prd.md
-│   └── spec.md
+├── .env.example
+├── .gitignore
 ├── package.json
-├── next.config.js
-├── tailwind.config.js
-├── tsconfig.json
-├── README.md
-└── .env.example
+└── README.md
 ```
 
 This structure is deliberate: parsing, graph construction, AI summary generation, and export logic are all separated so the build stays testable and understandable.
 
 ## External Services and Dependencies
 - Gemini API — used to generate the selected node’s architectural summary
-  - Endpoint: Gemini model endpoint for chat or generation calls
-  - Auth: API key stored in environment variables
-  - Risk: rate limits, prompt size limits, and model cost if usage grows
-  - Fallback: use a simplified prompt with a short file excerpt and keep the summary length very short
+  - App endpoint: `POST /api/summarize` accepts the node name, path, category, and up to 12,000 source characters; it returns `{ "summary": "..." }`
+  - SDK call: `@google/genai` `models.generateContent` using `gemini-3.8-flash`
+  - Auth: `GEMINI_API_KEY` stays server-side and is never sent to the browser
+  - Failure behavior: missing key returns 503; API errors return 502; the inspector falls back to a local metadata summary
+  - Cost and quota depend on the current Google AI Studio project limits; check current pricing and quotas before public use
+  - Documentation: https://ai.google.dev/gemini-api/docs/text-generation and https://ai.google.dev/gemini-api/docs/api-key
 
 - GitHub README export — no external service required; Mermaid code is generated locally and copied to the clipboard
 
@@ -207,19 +190,14 @@ This structure is deliberate: parsing, graph construction, AI summary generation
 ## What Was Simplified and Why
 - **Browser-only parsing instead of a backend parser** — the product remains fast and free-tier friendly while still proving the core architecture-mapping concept.
 - **Direct graph generation from import/export relationships instead of full semantic code analysis** — this is enough for the proof of concept and keeps the app understandable.
-- **Optional Gemini route or browser call instead of a full backend API service** — the project can stay lean while maintaining the AI summary feature when the API is available.
+- **A single Next.js route for Gemini calls** instead of a separate backend service — it keeps the API key off the client while avoiding another service to deploy.
 
 ## Decisions and Open Issues
 Decisions made here:
-- The app will stay browser-first and avoid a backend unless a real limitation appears.
+- The app stays browser-first and uses one Next.js route only for Gemini requests, keeping the API key out of client code.
 - The primary MVP is a client-side JS/TS dependency graph with AI node summaries and Mermaid export.
 - The app will prioritize a polished UI and a strong visual wow moment over deep semantic repository analysis.
 
-One genuine uncertainty discussed:
-- The default plan is to keep the app fully client-side, but the learner may choose a tiny proxy if Gemini access from the browser becomes blocked by CORS or key restrictions. This will be checked during the build if needed.
+No separate learner uncertainty was identified in the resumed build. Key handling was clarified during implementation: a server route keeps the Gemini key out of client code, and a local metadata summary keeps inspection useful without a key.
 
-Open questions still worth resolving before the build is locked in:
-- Should the demo repo be bundled locally, or will the app fetch a public sample repository when the demo button is clicked?
-- Should the Mermaid export copy directly to the clipboard only, or also offer a downloadable markdown file?
-
-These are implementation-level decisions, not blockers for the proof-of-concept draft.
+Open questions: None currently block the proof of concept. The demo is a small in-app sample, and Mermaid export copies to the clipboard with a Markdown download fallback.
