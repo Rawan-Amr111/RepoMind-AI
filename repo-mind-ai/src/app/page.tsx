@@ -1,3 +1,8 @@
+"use client";
+
+import JSZip from "jszip";
+import { ChangeEvent, DragEvent, useRef, useState } from "react";
+
 const layerOptions = [
   "UI Components",
   "State Stores & Hooks",
@@ -8,6 +13,86 @@ const layerOptions = [
 const layoutOptions = ["Force", "DAG", "Radial"];
 
 export default function Home() {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [statusText, setStatusText] = useState("Waiting for project upload");
+  const [projectName, setProjectName] = useState("No project loaded");
+  const [progress, setProgress] = useState(0);
+
+  const startParsing = async (label: string, files: File[]) => {
+    setIsParsing(true);
+    setStatusText("Parsing JS/TS imports via JSZip...");
+    setProjectName(label);
+    setProgress(10);
+
+    const timer = setInterval(() => {
+      setProgress((current) => Math.min(current + 14, 95));
+    }, 170);
+
+    try {
+      const zipFile = files.find((file) => file.name.toLowerCase().endsWith(".zip"));
+
+      if (zipFile) {
+        const zip = await JSZip.loadAsync(zipFile);
+        const jsFiles = Object.keys(zip.files).filter(
+          (name) => !zip.files[name].dir && /\.(tsx|ts|jsx|js)$/.test(name),
+        );
+
+        if (!jsFiles.length) {
+          throw new Error("No parseable JS/TS files found in ZIP");
+        }
+      } else {
+        const jsFiles = files.filter((file) => /\.(tsx|ts|jsx|js)$/.test(file.name));
+
+        if (!jsFiles.length) {
+          throw new Error("No parseable JS/TS files found in selected files");
+        }
+      }
+
+      setProgress(100);
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      setStatusText("Project parsed successfully");
+    } catch (error) {
+      setStatusText(
+        error instanceof Error ? error.message : "The project could not be parsed.",
+      );
+    } finally {
+      if (timer) clearInterval(timer);
+      setIsParsing(false);
+    }
+  };
+
+  const handleFiles = async (incomingFiles: FileList | File[]) => {
+    const files = Array.from(incomingFiles);
+    if (!files.length) return;
+    await startParsing(files[0]?.name ?? "Uploaded project", files);
+  };
+
+  const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      await handleFiles(event.target.files);
+      event.target.value = "";
+    }
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (event.dataTransfer.files.length) {
+      await handleFiles(event.dataTransfer.files);
+    }
+  };
+
+  const handleDemoRepo = async () => {
+    const demoFile = new File(
+      ["export const DemoComponent = () => 'demo';\nexport default DemoComponent;"],
+      "demo.tsx",
+      { type: "text/plain" },
+    );
+
+    await startParsing("Demo Repo", [demoFile]);
+  };
+
   return (
     <div className="min-h-screen bg-[#050b14] text-slate-100">
       <div className="mx-auto flex h-screen max-w-[1800px] flex-col">
@@ -42,13 +127,63 @@ export default function Home() {
 
         <div className="flex min-h-0 flex-1 overflow-hidden border-t border-white/10">
           <aside className="w-[330px] border-r border-white/10 bg-[#0a1220] p-5">
-            <div className="rounded-2xl border border-dashed border-slate-600 bg-slate-900/60 p-4 text-center shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
-              <div className="mb-3 text-lg font-medium text-slate-200">
-                Drop repository .zip or files here
-              </div>
-              <div className="text-sm text-slate-400">
-                Drag and drop your project or browse locally.
-              </div>
+            <div
+              onDrop={handleDrop}
+              onDragOver={(event) => event.preventDefault()}
+              className="rounded-2xl border border-dashed border-slate-600 bg-slate-900/60 p-4 text-center shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] transition hover:border-cyan-400/40 hover:bg-slate-800/70"
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleChange}
+                accept=".zip,.js,.jsx,.ts,.tsx"
+              />
+              <input
+                ref={folderInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleChange}
+                {...{ webkitdirectory: "" }}
+              />
+
+              {isParsing ? (
+                <div className="space-y-3 text-left">
+                  <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cyan-200">
+                    <span>Parsing</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 transition-[width] duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="text-sm text-slate-300">{statusText}</div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3 text-lg font-medium text-slate-200">
+                    Drop repository .zip or files here
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-500/20"
+                    onClick={() => inputRef.current?.click()}
+                  >
+                    Browse files
+                  </button>
+                  <button
+                    type="button"
+                    className="ml-2 rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
+                    onClick={() => folderInputRef.current?.click()}
+                  >
+                    Browse folder
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="mt-6 space-y-4">
@@ -90,6 +225,12 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-700 bg-slate-950/60 p-3 text-xs text-slate-300">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Project</div>
+              <div className="mt-2 font-medium text-slate-100">{projectName}</div>
+              <div className="mt-1 text-slate-400">{statusText}</div>
+            </div>
           </aside>
 
           <main className="relative flex-1 overflow-hidden bg-[#070d18]">
@@ -108,6 +249,7 @@ export default function Home() {
 
                 <button
                   type="button"
+                  onClick={handleDemoRepo}
                   className="mt-6 inline-flex items-center justify-center rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_0_24px_rgba(34,211,238,0.4)] transition hover:bg-cyan-300"
                 >
                   Load Demo Repo
