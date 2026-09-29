@@ -49,7 +49,7 @@ Build mode: learn
   Learner check: Try filtering, inspect a node, and copy the architecture diagram; confirm each result is clear and useful.
   Commit: `Add graph inspection and Mermaid export`
 
-- [ ] **5. Final demo polish and failure states**
+- [x] **5. Final demo polish and failure states**
   Becomes usable: Upload, parsing, and AI failures are explained clearly, and the full demo remains legible at the target screen size.
   Why now: Once all core behaviors are integrated, this final slice resolves the few failure cases that could derail a live demo.
   PRD ref: `prd.md > States and Boundaries`, `prd.md > What We're Building`
@@ -62,23 +62,23 @@ Build mode: learn
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — after slice 2 or slice 3, depending on user feedback
-- [ ] Final kick-the-tires exploration and feedback completed
+- [x] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — brief recap connected an observed AI-output defect to its verified fix
+- [x] Optional edit and transfer reflection addressed — no tour edit; optional transfer question offered in handoff
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: [what actually happened; real document/test/code references; unfinished work if interrupted]
-Route and stops: [actual paths and symbols; guided stops completed, or reference-only route]
-Edit outcome: [tried/kept/reverted/declined/not applicable; verification if changed]
-Reflection: [offered/answered/declined/already covered — personal answer belongs only in the ignored profile]
-Activity mode: [live app and editor, explicit static fallback, focused alternative, prior practice, or recap]
+Activity and evidence: Brief recap of the Gemini fragment returned under HTTP 200; `src/app/api/summarize/route.ts` now lowers thinking effort, allows a larger output budget, rejects incomplete summaries, and preserves the local fallback. `npm run build` and a live two-sentence response passed.
+Route and stops: Reference-only map route: `src/app/page.tsx` (`startParsing`), `src/lib/parseProject.ts` (`parseProjectFiles`), `src/lib/architecture.ts` (`buildArchitectureGraph`), and graph/inspector output components. No interactive source tour claimed.
+Edit outcome: No separate tour edit; the implementation correction was verified by production build and live API output.
+Reflection: Optional transfer question offered in handoff; no response recorded.
+Activity mode: Brief evidence-based recap and offline `devpost/app-map.html`.
 
 ## Revisions
 
