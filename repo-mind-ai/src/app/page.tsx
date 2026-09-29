@@ -1,7 +1,9 @@
 "use client";
 
-import JSZip from "jszip";
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import GraphCanvas from "@/components/GraphCanvas";
+import { buildArchitectureGraph, type ArchitectureGraph } from "@/lib/architecture";
+import { parseProjectFiles } from "@/lib/parseProject";
 
 const layerOptions = [
   "UI Components",
@@ -19,36 +21,23 @@ export default function Home() {
   const [statusText, setStatusText] = useState("Waiting for project upload");
   const [projectName, setProjectName] = useState("No project loaded");
   const [progress, setProgress] = useState(0);
+  const [graph, setGraph] = useState<ArchitectureGraph>({ nodes: [], edges: [] });
 
   const startParsing = async (label: string, files: File[]) => {
     setIsParsing(true);
     setStatusText("Parsing JS/TS imports via JSZip...");
     setProjectName(label);
     setProgress(10);
+    setGraph({ nodes: [], edges: [] });
 
     const timer = setInterval(() => {
       setProgress((current) => Math.min(current + 14, 95));
     }, 170);
 
     try {
-      const zipFile = files.find((file) => file.name.toLowerCase().endsWith(".zip"));
-
-      if (zipFile) {
-        const zip = await JSZip.loadAsync(zipFile);
-        const jsFiles = Object.keys(zip.files).filter(
-          (name) => !zip.files[name].dir && /\.(tsx|ts|jsx|js)$/.test(name),
-        );
-
-        if (!jsFiles.length) {
-          throw new Error("No parseable JS/TS files found in ZIP");
-        }
-      } else {
-        const jsFiles = files.filter((file) => /\.(tsx|ts|jsx|js)$/.test(file.name));
-
-        if (!jsFiles.length) {
-          throw new Error("No parseable JS/TS files found in selected files");
-        }
-      }
+      const sourceFiles = await parseProjectFiles(files);
+      const parsedGraph = buildArchitectureGraph(sourceFiles);
+      setGraph(parsedGraph);
 
       setProgress(100);
       await new Promise((resolve) => setTimeout(resolve, 350));
@@ -84,13 +73,17 @@ export default function Home() {
   };
 
   const handleDemoRepo = async () => {
-    const demoFile = new File(
-      ["export const DemoComponent = () => 'demo';\nexport default DemoComponent;"],
-      "demo.tsx",
-      { type: "text/plain" },
-    );
+    const demoFiles = [
+      new File(["import { TopBar } from '../components/TopBar';\nexport default function Page() { return <TopBar />; }"], "page.tsx"),
+      new File(["import { useProject } from '../hooks/useProject';\nexport function TopBar() { useProject(); return <header>RepoMind</header>; }"], "TopBar.tsx"),
+      new File(["export function useProject() { return { name: 'Demo Repo' }; }"], "useProject.ts"),
+    ];
+    const paths = ["src/app/page.tsx", "src/components/TopBar.tsx", "src/hooks/useProject.ts"];
+    demoFiles.forEach((file, index) => {
+      Object.defineProperty(file, "webkitRelativePath", { value: paths[index] });
+    });
 
-    await startParsing("Demo Repo", [demoFile]);
+    await startParsing("Demo Repo", demoFiles);
   };
 
   return (
@@ -113,7 +106,7 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200">
-              Nodes: 0 | Edges: 0
+              Nodes: {graph.nodes.length} | Edges: {graph.edges.length}
             </div>
             <button
               type="button"
@@ -235,8 +228,11 @@ export default function Home() {
 
           <main className="relative flex-1 overflow-hidden bg-[#070d18]">
             <div className="app-grid absolute inset-0 opacity-80" />
-            <div className="relative z-10 flex h-full items-center justify-center p-8">
-              <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/70 p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.7)] backdrop-blur-sm">
+            {graph.nodes.length > 0 ? (
+              <GraphCanvas nodes={graph.nodes} edges={graph.edges} />
+            ) : (
+              <div className="relative z-10 flex h-full items-center justify-center p-8">
+                <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/70 p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.7)] backdrop-blur-sm">
                 <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 shadow-[0_0_28px_rgba(34,211,238,0.25)]">
                   <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current" aria-hidden="true">
                     <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm1 15h-2v-2h2Zm0-4h-2V7h2Z" />
@@ -254,8 +250,9 @@ export default function Home() {
                 >
                   Load Demo Repo
                 </button>
+                </div>
               </div>
-            </div>
+            )}
           </main>
 
           <aside className="w-[330px] border-l border-white/10 bg-[#0a1220] p-5">

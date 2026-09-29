@@ -1,3 +1,4 @@
+@import "@xyflow/react/dist/style.css";
 @import "tailwindcss";
 
 :root {
@@ -29,4 +30,8 @@ body {
     linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
   mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+}
+
+.react-flow__edge-path {
+  filter: drop-shadow(0 0 5px rgba(103, 232, 249, 0.65));
 }
